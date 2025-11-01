@@ -72,14 +72,16 @@ export default function TestConsole() {
 		const res = await fetch('/api/stripe/test/charges/list', { cache: 'no-store' });
 		const j = await res.json();
 		if (j.ok) {
-			setCharges(j.charges);
+			const newCharges = j.charges;
+			setCharges(newCharges);
 			// Reload refunds after charges load to filter by current charges
-			setTimeout(() => loadRefunds(), 100);
+			const chargeIds = newCharges.map((c: ChargeRow) => c.id);
+			setTimeout(() => loadRefunds(chargeIds), 100);
 		}
 		setRefreshing(false);
 	}
 
-	async function loadRefunds() {
+	async function loadRefunds(chargeIdsOverride?: string[]) {
 		setLoadingRefunds(true);
 		const res = await fetch('/api/refunds/list', { cache: 'no-store' });
 		const j = await res.json();
@@ -87,7 +89,7 @@ export default function TestConsole() {
 			const allRefunds = j.data || [];
 			// Only show refunds that match the currently visible charge(s)
 			// If no charges, show no refunds
-			const chargeIds = charges.map(c => c.id);
+			const chargeIds = chargeIdsOverride || charges.map(c => c.id);
 			const filteredRefunds = chargeIds.length > 0 
 				? allRefunds.filter((r: RefundRow) => 
 					r.original_charge_id && chargeIds.includes(r.original_charge_id)
