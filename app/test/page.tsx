@@ -71,7 +71,11 @@ export default function TestConsole() {
 		setCharges([]); // Clear table first
 		const res = await fetch('/api/stripe/test/charges/list', { cache: 'no-store' });
 		const j = await res.json();
-		if (j.ok) setCharges(j.charges);
+		if (j.ok) {
+			setCharges(j.charges);
+			// Reload refunds after charges load to filter by current charges
+			setTimeout(() => loadRefunds(), 100);
+		}
 		setRefreshing(false);
 	}
 
@@ -80,15 +84,26 @@ export default function TestConsole() {
 		const res = await fetch('/api/refunds/list', { cache: 'no-store' });
 		const j = await res.json();
 		if (j.ok) {
-			const refundList = j.data || [];
-			setRefunds(refundList);
+			const allRefunds = j.data || [];
+			// Only show refunds that match the currently visible charge(s)
+			// If no charges, show no refunds
+			const chargeIds = charges.map(c => c.id);
+			const filteredRefunds = chargeIds.length > 0 
+				? allRefunds.filter((r: RefundRow) => 
+					r.original_charge_id && chargeIds.includes(r.original_charge_id)
+				)
+				: [];
+			setRefunds(filteredRefunds);
 			// Always auto-select the first/most recent refund if list changes
-			if (refundList.length > 0) {
-				const firstRefundId = refundList[0].id;
+			if (filteredRefunds.length > 0) {
+				const firstRefundId = filteredRefunds[0].id;
 				// Update selection if current selection doesn't exist in list, or if no selection
-				if (!selectedRefundId || !refundList.find((r: RefundRow) => r.id === selectedRefundId)) {
+				if (!selectedRefundId || !filteredRefunds.find((r: RefundRow) => r.id === selectedRefundId)) {
 					setSelectedRefundId(firstRefundId);
 				}
+			} else {
+				// Clear selection if no refunds match
+				setSelectedRefundId('');
 			}
 		}
 		setLoadingRefunds(false);
@@ -103,7 +118,7 @@ export default function TestConsole() {
 			}
 		}, 3000); // Auto-refresh refunds every 3 seconds when not paused
 		return () => clearInterval(interval);
-	}, [autoRefreshPaused]);
+	}, [autoRefreshPaused, charges]); // Re-run when charges change to filter refunds
 
 	async function createCharge() {
 		setCreating(true);
