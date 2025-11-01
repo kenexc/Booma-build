@@ -183,28 +183,28 @@ export default function TestConsole() {
 		await loadRefunds();
 	}
 
-	async function createPlaidLink() {
-		setLog(l => ['Creating Plaid sandbox link...', ...l]);
-		const res = await fetch('/api/plaid/sandbox/link', { method: 'POST' });
-		const j = await res.json();
-		if (j.ok) {
-			setPlaidAccessToken(j.access_token);
-			setLog(l => [`✓ Plaid link created! Access token: ${j.access_token.slice(0, 20)}...`, `   Ready to simulate bank transaction posting.`, ...l]);
-		} else {
-			setLog(l => [`✗ Error: ${j.error}`, ...l]);
-		}
-	}
 
 	async function firePlaidWebhook() {
-		if (!plaidAccessToken) {
-			setLog(l => ['✗ No Plaid access token. Click "Create Plaid Link" first.', ...l]);
-			return;
+		// Auto-create Plaid link if we don't have one yet
+		let token = plaidAccessToken;
+		if (!token) {
+			setLog(l => ['Creating Plaid sandbox link...', ...l]);
+			const linkRes = await fetch('/api/plaid/sandbox/link', { method: 'POST' });
+			const linkJson = await linkRes.json();
+			if (!linkJson.ok) {
+				setLog(l => [`✗ Error creating Plaid link: ${linkJson.error}`, ...l]);
+				return;
+			}
+			token = linkJson.access_token;
+			setPlaidAccessToken(token);
+			setLog(l => [`✓ Plaid link created. Firing webhook...`, ...l]);
 		}
+		
 		setLog(l => ['📨 Firing Plaid webhook (simulating bank transaction)...', ...l]);
 		const res = await fetch('/api/plaid/sandbox/transactions/fire', {
 			method: 'POST',
 			headers: { 'content-type': 'application/json' },
-			body: JSON.stringify({ access_token: plaidAccessToken }),
+			body: JSON.stringify({ access_token: token }),
 		});
 		const j = await res.json();
 		if (j.ok) {
@@ -276,7 +276,7 @@ export default function TestConsole() {
 							<div className="flex-shrink-0 w-6 h-6 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-xs font-bold">4</div>
 							<div>
 								<p className="font-medium">Simulate bank posting</p>
-								<p className="text-muted-foreground text-xs">Click "Create Plaid Link" then "Simulate Posted" to trigger bank transaction</p>
+								<p className="text-muted-foreground text-xs">Click "Simulate Posted" to trigger bank transaction (Plaid link is created automatically)</p>
 							</div>
 						</div>
 						<div className="flex items-start gap-3">
@@ -487,16 +487,9 @@ export default function TestConsole() {
 													<ArrowDownCircle className="h-4 w-4 mr-2" />
 													{selectedRefund?.status !== 'approved' ? 'Waiting for approved...' : 'Advance'}
 												</Button>
-												<Button onClick={createPlaidLink} variant="secondary" size="sm" className="w-full">
-													{plaidAccessToken ? (
-														<>✓ Plaid Ready</>
-													) : (
-														<>Plaid Link</>
-													)}
-												</Button>
 												<Button
 													onClick={firePlaidWebhook}
-													disabled={!plaidAccessToken || selectedRefund?.status !== 'instant_sent'}
+													disabled={selectedRefund?.status !== 'instant_sent'}
 													variant="secondary"
 													size="sm"
 													className="w-full"
@@ -509,7 +502,7 @@ export default function TestConsole() {
 													disabled={selectedRefund?.status !== 'posted' && selectedRefund?.status !== 'instant_sent'}
 													variant="destructive"
 													size="sm"
-													className="w-full"
+													className="w-full col-span-2"
 												>
 													<ArrowUpCircle className="h-4 w-4 mr-2" />
 													Collect
