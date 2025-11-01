@@ -55,6 +55,18 @@ function getStatusOrder(status: string): number {
 	return order[status] ?? -1;
 }
 
+function formatStatusDisplay(status: string): string {
+	const statusMap: Record<string, string> = {
+		recouped: 'Collected',
+		instant_sent: 'Instant Sent',
+		approved: 'Approved',
+		initiated: 'Initiated',
+		posted: 'Posted',
+		failed: 'Failed',
+	};
+	return statusMap[status] || status.replace('_', ' ');
+}
+
 export default function TestConsole() {
 	const [charges, setCharges] = useState<ChargeRow[]>([]);
 	const [refunds, setRefunds] = useState<RefundRow[]>([]);
@@ -229,7 +241,7 @@ export default function TestConsole() {
 		});
 		const j = await res.json();
 		if (j.ok) {
-			setLog(l => [`✓ Collection completed! Refund status: recouped`, ...l]);
+			setLog(l => [`✓ Collection completed! Refund status: Collected`, ...l]);
 		} else {
 			setLog(l => [`✗ Error: ${j.error}`, ...l]);
 		}
@@ -442,7 +454,7 @@ export default function TestConsole() {
 													<div className="flex items-center justify-between">
 														<span className="text-sm font-medium text-muted-foreground">Current Status</span>
 														<Badge variant={getStatusBadgeVariant(selectedRefund.status)} className="text-base px-3 py-1">
-															{selectedRefund.status}
+															{formatStatusDisplay(selectedRefund.status)}
 														</Badge>
 													</div>
 													<div className="flex items-center justify-between">
@@ -464,7 +476,7 @@ export default function TestConsole() {
 																			{i + 1}
 																		</div>
 																		<span className={`ml-2 ${isActive ? 'font-medium' : 'text-muted-foreground'}`}>
-																			{status.replace('_', ' ')}
+																			{formatStatusDisplay(status)}
 																		</span>
 																		{i < 4 && <ArrowRight className="h-3 w-3 mx-1 text-muted-foreground" />}
 																	</div>
@@ -487,9 +499,10 @@ export default function TestConsole() {
 													variant="default"
 													size="sm"
 													className="w-full"
+													title={selectedRefund?.status === 'approved' ? 'Send instant advance to user' : `Cannot advance: Status must be 'approved', current: ${formatStatusDisplay(selectedRefund?.status || 'none')}`}
 												>
 													<ArrowDownCircle className="h-4 w-4 mr-2" />
-													{selectedRefund?.status !== 'approved' ? 'Waiting for approved...' : 'Advance'}
+													Advance
 												</Button>
 												<Button
 													onClick={() => {
@@ -500,10 +513,10 @@ export default function TestConsole() {
 													variant="secondary"
 													size="sm"
 													className="w-full"
-													title={selectedRefund?.status === 'instant_sent' ? 'Mark refund as posted' : `Current status: ${selectedRefund?.status || 'none'}`}
+													title={selectedRefund?.status === 'instant_sent' ? 'Mark refund as posted' : `Cannot post: Status must be 'instant_sent', current: ${formatStatusDisplay(selectedRefund?.status || 'none')}`}
 												>
 													<Clock className="h-4 w-4 mr-2" />
-													{selectedRefund?.status !== 'instant_sent' ? `Waiting for instant_sent... (${selectedRefund?.status || 'none'})` : 'Simulate Posted'}
+													Mark Posted
 												</Button>
 												<Button
 													onClick={collectRefund}
