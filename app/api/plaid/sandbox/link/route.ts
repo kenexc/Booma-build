@@ -11,14 +11,9 @@ import { plaidPost } from '@/lib/plaid';
 
 export async function POST() {
 	try {
-		const webhookUrl = process.env.NEXT_PUBLIC_APP_URL
-			? `${process.env.NEXT_PUBLIC_APP_URL}/api/webhooks/plaid`
-			: 'https://placeholder.vercel.app/api/webhooks/plaid';
-
 		const resp = await plaidPost('/sandbox/public_token/create', {
 			institution_id: 'ins_109508',
 			initial_products: ['transactions'],
-			webhook: webhookUrl,
 		});
 
 		const { public_token } = resp;
@@ -26,9 +21,25 @@ export async function POST() {
 			public_token,
 		});
 
+		const access_token = exchangeResp.access_token;
+		const webhookUrl = process.env.NEXT_PUBLIC_APP_URL
+			? `${process.env.NEXT_PUBLIC_APP_URL}/api/webhooks/plaid`
+			: 'https://placeholder.vercel.app/api/webhooks/plaid';
+
+		// Set webhook after item is created
+		try {
+			await plaidPost('/item/webhook/update', {
+				access_token,
+				webhook: webhookUrl,
+			});
+		} catch (webhookError) {
+			// Webhook update might fail in sandbox, but we can still use fire_webhook
+			console.warn('Webhook update failed, but item created:', webhookError);
+		}
+
 		return NextResponse.json({
 			ok: true,
-			access_token: exchangeResp.access_token,
+			access_token,
 			item_id: exchangeResp.item_id,
 		});
 	} catch (e: any) {
