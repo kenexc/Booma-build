@@ -6,7 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { ArrowRight, RefreshCw, Play, CheckCircle2, XCircle, CreditCard, TrendingUp } from 'lucide-react';
+import { ArrowRight, RefreshCw, Play, CheckCircle2, XCircle, CreditCard, TrendingUp, ArrowDownCircle, ArrowUpCircle, Clock } from 'lucide-react';
 
 type ChargeRow = {
 	id: string;
@@ -43,6 +43,17 @@ function getStatusBadgeVariant(status: string) {
 	}
 }
 
+function getStatusOrder(status: string): number {
+	const order: Record<string, number> = {
+		initiated: 0,
+		approved: 1,
+		instant_sent: 2,
+		posted: 3,
+		recouped: 4,
+	};
+	return order[status] ?? -1;
+}
+
 export default function TestConsole() {
 	const [charges, setCharges] = useState<ChargeRow[]>([]);
 	const [refunds, setRefunds] = useState<RefundRow[]>([]);
@@ -55,6 +66,7 @@ export default function TestConsole() {
 
 	async function loadCharges() {
 		setRefreshing(true);
+		setCharges([]); // Clear table first
 		const res = await fetch('/api/stripe/test/charges/list', { cache: 'no-store' });
 		const j = await res.json();
 		if (j.ok) setCharges(j.charges);
@@ -77,6 +89,8 @@ export default function TestConsole() {
 	useEffect(() => {
 		loadCharges();
 		loadRefunds();
+		const interval = setInterval(loadRefunds, 3000); // Auto-refresh refunds every 3 seconds
+		return () => clearInterval(interval);
 	}, []);
 
 	async function createCharge() {
@@ -94,7 +108,7 @@ export default function TestConsole() {
 	}
 
 	async function refundCharge(id: string) {
-		setLog(l => [`Requesting refund for ${id}...`, ...l]);
+		setLog(l => [`Requesting refund for charge ${id.slice(0, 16)}...`, ...l]);
 		const res = await fetch('/api/stripe/test/refund', {
 			method: 'POST',
 			headers: { 'content-type': 'application/json' },
@@ -102,7 +116,7 @@ export default function TestConsole() {
 		});
 		const j = await res.json();
 		if (j.ok) {
-			setLog(l => [`✓ Refund requested: ${j.refund_id}. Waiting for webhook...`, ...l]);
+			setLog(l => [`✓ Refund created: ${j.refund_id}. Webhook will create refund record...`, ...l]);
 		} else {
 			setLog(l => [`✗ Error: ${j.error}`, ...l]);
 		}
@@ -114,7 +128,7 @@ export default function TestConsole() {
 
 	async function advanceRefund() {
 		if (!selectedRefundId) return setLog(l => ['✗ No refund selected', ...l]);
-		setLog(l => ['Advancing refund...', ...l]);
+		setLog(l => ['🚀 Advancing refund (simulating Dwolla ACH)...', ...l]);
 		const res = await fetch('/api/dwolla/sim/advance', {
 			method: 'POST',
 			headers: { 'content-type': 'application/json' },
@@ -122,7 +136,7 @@ export default function TestConsole() {
 		});
 		const j = await res.json();
 		if (j.ok) {
-			setLog(l => [`✓ Advance completed: ${j.data?.transfer_id}`, ...l]);
+			setLog(l => [`✓ Advance completed! Refund status: instant_sent`, ...l]);
 		} else {
 			setLog(l => [`✗ Error: ${j.error}`, ...l]);
 		}
@@ -135,7 +149,7 @@ export default function TestConsole() {
 		const j = await res.json();
 		if (j.ok) {
 			setPlaidAccessToken(j.access_token);
-			setLog(l => [`✓ Plaid link created. Access token saved.`, ...l]);
+			setLog(l => [`✓ Plaid link created! Access token: ${j.access_token.slice(0, 20)}...`, `   Ready to simulate bank transaction posting.`, ...l]);
 		} else {
 			setLog(l => [`✗ Error: ${j.error}`, ...l]);
 		}
@@ -143,10 +157,10 @@ export default function TestConsole() {
 
 	async function firePlaidWebhook() {
 		if (!plaidAccessToken) {
-			setLog(l => ['✗ No Plaid access token. Create link first.', ...l]);
+			setLog(l => ['✗ No Plaid access token. Click "Create Plaid Link" first.', ...l]);
 			return;
 		}
-		setLog(l => ['Firing Plaid webhook...', ...l]);
+		setLog(l => ['📨 Firing Plaid webhook (simulating bank transaction)...', ...l]);
 		const res = await fetch('/api/plaid/sandbox/transactions/fire', {
 			method: 'POST',
 			headers: { 'content-type': 'application/json' },
@@ -154,7 +168,7 @@ export default function TestConsole() {
 		});
 		const j = await res.json();
 		if (j.ok) {
-			setLog(l => ['✓ Plaid webhook fired. Checking refunds...', ...l]);
+			setLog(l => [`✓ Plaid webhook fired! Refund status should change to: posted`, ...l]);
 		} else {
 			setLog(l => [`✗ Error: ${j.error}`, ...l]);
 		}
@@ -163,7 +177,7 @@ export default function TestConsole() {
 
 	async function collectRefund() {
 		if (!selectedRefundId) return setLog(l => ['✗ No refund selected', ...l]);
-		setLog(l => ['Collecting refund...', ...l]);
+		setLog(l => ['💸 Collecting repayment (simulating Dwolla ACH debit)...', ...l]);
 		const res = await fetch('/api/dwolla/sim/collect', {
 			method: 'POST',
 			headers: { 'content-type': 'application/json' },
@@ -171,7 +185,7 @@ export default function TestConsole() {
 		});
 		const j = await res.json();
 		if (j.ok) {
-			setLog(l => [`✓ Collect completed: ${j.data?.transfer_id}`, ...l]);
+			setLog(l => [`✓ Collection completed! Refund status: recouped`, ...l]);
 		} else {
 			setLog(l => [`✗ Error: ${j.error}`, ...l]);
 		}
@@ -183,9 +197,58 @@ export default function TestConsole() {
 	return (
 		<div className="space-y-8">
 			<div>
-				<h1 className="text-3xl font-bold tracking-tight">Test Console</h1>
-				<p className="text-muted-foreground mt-2">Manage test charges, refunds, and simulate the complete refund flow</p>
+				<h1 className="text-3xl font-bold tracking-tight">Booma Demo Console</h1>
+				<p className="text-muted-foreground mt-2">
+					Watch the complete refund flow: Charge → Refund → Advance → Posted → Collect
+				</p>
 			</div>
+
+			{/* Step-by-step guide */}
+			<Card className="border-primary/20 bg-primary/5">
+				<CardHeader>
+					<CardTitle className="text-lg">Quick Start Guide</CardTitle>
+					<CardDescription>Follow these steps to see the complete flow</CardDescription>
+				</CardHeader>
+				<CardContent>
+					<div className="space-y-3 text-sm">
+						<div className="flex items-start gap-3">
+							<div className="flex-shrink-0 w-6 h-6 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-xs font-bold">1</div>
+							<div>
+								<p className="font-medium">Create a test charge</p>
+								<p className="text-muted-foreground text-xs">Click "Create $42 Charge" below</p>
+							</div>
+						</div>
+						<div className="flex items-start gap-3">
+							<div className="flex-shrink-0 w-6 h-6 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-xs font-bold">2</div>
+							<div>
+								<p className="font-medium">Refund the charge</p>
+								<p className="text-muted-foreground text-xs">Click "Refund" on the charge. Webhook creates refund record with status "approved"</p>
+							</div>
+						</div>
+						<div className="flex items-start gap-3">
+							<div className="flex-shrink-0 w-6 h-6 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-xs font-bold">3</div>
+							<div>
+								<p className="font-medium">Select the refund & advance it</p>
+								<p className="text-muted-foreground text-xs">Pick the refund from dropdown, click "Advance" to simulate ACH credit</p>
+							</div>
+						</div>
+						<div className="flex items-start gap-3">
+							<div className="flex-shrink-0 w-6 h-6 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-xs font-bold">4</div>
+							<div>
+								<p className="font-medium">Simulate bank posting</p>
+								<p className="text-muted-foreground text-xs">Click "Create Plaid Link" then "Simulate Posted" to trigger bank transaction</p>
+							</div>
+						</div>
+						<div className="flex items-start gap-3">
+							<div className="flex-shrink-0 w-6 h-6 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-xs font-bold">5</div>
+							<div>
+								<p className="font-medium">Collect repayment</p>
+								<p className="text-muted-foreground text-xs">Click "Collect" to simulate ACH debit and complete the cycle</p>
+							</div>
+						</div>
+					</div>
+				</CardContent>
+			</Card>
 
 			<div className="grid gap-6 md:grid-cols-2">
 				<Card>
@@ -195,12 +258,17 @@ export default function TestConsole() {
 								<CreditCard className="h-5 w-5" />
 								Stripe Charges
 							</CardTitle>
-							<Button variant="outline" size="sm" onClick={loadCharges} disabled={refreshing}>
-								<RefreshCw className={`h-4 w-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
-								Refresh
-							</Button>
+							<div className="flex gap-2">
+								<Button variant="outline" size="sm" onClick={() => setCharges([])}>
+									Clear
+								</Button>
+								<Button variant="outline" size="sm" onClick={loadCharges} disabled={refreshing}>
+									<RefreshCw className={`h-4 w-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
+									Refresh
+								</Button>
+							</div>
 						</div>
-						<CardDescription>Recent test charges from Stripe sandbox</CardDescription>
+						<CardDescription>Create test charges and refund them</CardDescription>
 					</CardHeader>
 					<CardContent>
 						<div className="flex gap-2 mb-4">
@@ -281,81 +349,128 @@ export default function TestConsole() {
 						<div className="flex items-center justify-between">
 							<CardTitle className="flex items-center gap-2">
 								<TrendingUp className="h-5 w-5" />
-								Refund Actions
+								Refund Lifecycle
 							</CardTitle>
 							<Button variant="outline" size="sm" onClick={loadRefunds} disabled={loadingRefunds}>
 								<RefreshCw className={`h-4 w-4 mr-2 ${loadingRefunds ? 'animate-spin' : ''}`} />
 								Refresh
 							</Button>
 						</div>
-						<CardDescription>Manage refund lifecycle and simulate payment flows</CardDescription>
+						<CardDescription>Watch refund progress through the lifecycle</CardDescription>
 					</CardHeader>
 					<CardContent className="space-y-4">
-						<div className="space-y-2">
-							<label className="text-sm font-medium">Selected Refund</label>
-							<select
-								value={selectedRefundId}
-								onChange={(e) => setSelectedRefundId(e.target.value)}
-								disabled={refunds.length === 0}
-								className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-							>
-								{refunds.length === 0 ? (
-									<option value="">No refunds yet</option>
-								) : (
-									refunds.map(r => (
-										<option key={r.id} value={r.id}>
-											{r.id.slice(0, 8)}… - ${(r.amount_cents / 100).toFixed(2)} - {r.status}
-										</option>
-									))
-								)}
-							</select>
-						</div>
-
-						{selectedRefund && (
-							<div className="p-4 rounded-lg bg-muted">
-								<div className="flex items-center justify-between mb-2">
-									<span className="text-sm font-medium">Status</span>
-									<Badge variant={getStatusBadgeVariant(selectedRefund.status)}>{selectedRefund.status}</Badge>
-								</div>
-								<div className="flex items-center justify-between">
-									<span className="text-sm font-medium">Amount</span>
-									<span className="text-sm font-semibold">${(selectedRefund.amount_cents / 100).toFixed(2)}</span>
-								</div>
+						{refunds.length === 0 ? (
+							<div className="text-center py-8 text-muted-foreground">
+								<p className="text-sm">No refunds yet.</p>
+								<p className="text-xs mt-2">Create a charge and refund it to see refund records appear here.</p>
 							</div>
+						) : (
+							<>
+								<div className="space-y-2">
+									<label className="text-sm font-medium">Select Refund to Manage</label>
+									<select
+										value={selectedRefundId}
+										onChange={(e) => setSelectedRefundId(e.target.value)}
+										className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+									>
+										{refunds.map(r => (
+											<option key={r.id} value={r.id}>
+												${(r.amount_cents / 100).toFixed(2)} - {r.status} - {r.id.slice(0, 8)}...
+											</option>
+										))}
+									</select>
+								</div>
+
+								{selectedRefund && (
+									<>
+										<Card className="bg-muted/50">
+											<CardContent className="pt-6">
+												<div className="space-y-4">
+													<div className="flex items-center justify-between">
+														<span className="text-sm font-medium text-muted-foreground">Current Status</span>
+														<Badge variant={getStatusBadgeVariant(selectedRefund.status)} className="text-base px-3 py-1">
+															{selectedRefund.status}
+														</Badge>
+													</div>
+													<div className="flex items-center justify-between">
+														<span className="text-sm font-medium text-muted-foreground">Amount</span>
+														<span className="text-lg font-bold">${(selectedRefund.amount_cents / 100).toFixed(2)}</span>
+													</div>
+													<Separator />
+													<div className="space-y-2">
+														<p className="text-xs font-medium text-muted-foreground">Status Progression</p>
+														<div className="flex items-center gap-2 text-xs">
+															{['initiated', 'approved', 'instant_sent', 'posted', 'recouped'].map((status, i) => {
+																const currentOrder = getStatusOrder(selectedRefund.status);
+																const statusOrder = getStatusOrder(status);
+																const isActive = statusOrder <= currentOrder;
+																const isCurrent = status === selectedRefund.status;
+																return (
+																	<div key={status} className="flex items-center">
+																		<div className={`flex items-center justify-center w-6 h-6 rounded-full text-xs font-medium ${isActive ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'} ${isCurrent ? 'ring-2 ring-primary ring-offset-1' : ''}`}>
+																			{i + 1}
+																		</div>
+																		<span className={`ml-2 ${isActive ? 'font-medium' : 'text-muted-foreground'}`}>
+																			{status.replace('_', ' ')}
+																		</span>
+																		{i < 4 && <ArrowRight className="h-3 w-3 mx-1 text-muted-foreground" />}
+																	</div>
+																);
+															})}
+														</div>
+													</div>
+												</div>
+											</CardContent>
+										</Card>
+
+										<Separator />
+
+										<div className="space-y-2">
+											<p className="text-xs font-medium text-muted-foreground mb-2">Next Actions</p>
+											<div className="grid grid-cols-2 gap-2">
+												<Button
+													onClick={advanceRefund}
+													disabled={selectedRefund?.status !== 'approved'}
+													variant="default"
+													size="sm"
+													className="w-full"
+												>
+													<ArrowDownCircle className="h-4 w-4 mr-2" />
+													{selectedRefund?.status !== 'approved' ? 'Waiting for approved...' : 'Advance'}
+												</Button>
+												<Button onClick={createPlaidLink} variant="secondary" size="sm" className="w-full">
+													{plaidAccessToken ? (
+														<>✓ Plaid Ready</>
+													) : (
+														<>Plaid Link</>
+													)}
+												</Button>
+												<Button
+													onClick={firePlaidWebhook}
+													disabled={!plaidAccessToken || selectedRefund?.status !== 'instant_sent'}
+													variant="secondary"
+													size="sm"
+													className="w-full"
+												>
+													<Clock className="h-4 w-4 mr-2" />
+													{selectedRefund?.status !== 'instant_sent' ? 'Waiting for instant_sent...' : 'Simulate Posted'}
+												</Button>
+												<Button
+													onClick={collectRefund}
+													disabled={selectedRefund?.status !== 'posted' && selectedRefund?.status !== 'instant_sent'}
+													variant="destructive"
+													size="sm"
+													className="w-full"
+												>
+													<ArrowUpCircle className="h-4 w-4 mr-2" />
+													Collect
+												</Button>
+											</div>
+										</div>
+									</>
+								)}
+							</>
 						)}
-
-						<Separator />
-
-						<div className="grid grid-cols-2 gap-2">
-							<Button
-								onClick={advanceRefund}
-								disabled={!selectedRefundId || selectedRefund?.status !== 'approved'}
-								variant="default"
-								className="w-full"
-							>
-								<ArrowRight className="h-4 w-4 mr-2" />
-								Advance
-							</Button>
-							<Button onClick={createPlaidLink} variant="secondary" className="w-full">
-								Plaid Link
-							</Button>
-							<Button
-								onClick={firePlaidWebhook}
-								disabled={!plaidAccessToken || selectedRefund?.status !== 'instant_sent'}
-								variant="secondary"
-								className="w-full"
-							>
-								Simulate Posted
-							</Button>
-							<Button
-								onClick={collectRefund}
-								disabled={!selectedRefundId || (selectedRefund?.status !== 'posted' && selectedRefund?.status !== 'instant_sent')}
-								variant="destructive"
-								className="w-full"
-							>
-								Collect
-							</Button>
-						</div>
 					</CardContent>
 				</Card>
 			</div>
@@ -363,16 +478,16 @@ export default function TestConsole() {
 			<Card>
 				<CardHeader>
 					<CardTitle>Activity Log</CardTitle>
-					<CardDescription>Real-time log of all test operations</CardDescription>
+					<CardDescription>Real-time log of all operations and status changes</CardDescription>
 				</CardHeader>
 				<CardContent>
 					<div className="rounded-md border bg-muted/50 p-4 max-h-[300px] overflow-y-auto">
 						{log.length === 0 ? (
-							<p className="text-sm text-muted-foreground text-center py-4">No activity yet</p>
+							<p className="text-sm text-muted-foreground text-center py-4">No activity yet. Create a charge to get started.</p>
 						) : (
-							<ul className="space-y-1 text-sm font-mono">
+							<ul className="space-y-2 text-sm font-mono">
 								{log.map((line, i) => (
-									<li key={i} className={line.startsWith('✓') ? 'text-green-600' : line.startsWith('✗') ? 'text-red-600' : ''}>
+									<li key={i} className={line.startsWith('✓') ? 'text-green-600 dark:text-green-400' : line.startsWith('✗') ? 'text-red-600 dark:text-red-400' : line.startsWith('🚀') || line.startsWith('📨') || line.startsWith('💸') ? 'text-blue-600 dark:text-blue-400 font-semibold' : 'text-foreground'}>
 										{line}
 									</li>
 								))}
