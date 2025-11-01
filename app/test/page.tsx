@@ -271,8 +271,13 @@ export default function TestConsole() {
 								Stripe Charges
 							</CardTitle>
 							<div className="flex gap-2">
-								<Button variant="outline" size="sm" onClick={() => setCharges([])}>
-									Clear
+								<Button variant="outline" size="sm" onClick={() => {
+									setCharges([]);
+									setRefunds([]);
+									setSelectedRefundId('');
+									setLog([]);
+								}}>
+									Clear All
 								</Button>
 								<Button variant="outline" size="sm" onClick={loadCharges} disabled={refreshing}>
 									<RefreshCw className={`h-4 w-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
