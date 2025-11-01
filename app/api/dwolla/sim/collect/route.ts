@@ -1,0 +1,48 @@
+/*********
+Purpose: Simulate Dwolla collection - mark refund as recouped.
+Assumptions: For testing only. Sets status and records repayment ledger entry.
+*********/
+
+export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
+
+import { NextResponse } from 'next/server';
+import { selectOne, update, insert } from '@/lib/db';
+import type { RefundRecord, ApiResponse } from '@/lib/types';
+
+export async function POST(req: Request) {
+	try {
+		const { refund_id } = await req.json();
+		if (!refund_id) {
+			return NextResponse.json<ApiResponse<null>>({ ok: false, error: 'refund_id required' }, { status: 400 });
+		}
+
+		const refund = await selectOne<RefundRecord>('refunds', { id: refund_id });
+		if (!refund) {
+			return NextResponse.json<ApiResponse<null>>({ ok: false, error: 'Refund not found' }, { status: 404 });
+		}
+
+		if (refund.status !== 'posted' && refund.status !== 'instant_sent') {
+			return NextResponse.json<ApiResponse<null>>({ ok: false, error: 'Refund must be posted or instant_sent' }, { status: 400 });
+		}
+
+		await insert('ledger_entries', {
+			refund_id: refund.id,
+			type: 'repayment',
+			amount_cents: -refund.amount_cents,
+			currency: 'usd',
+		});
+
+		await update('refunds', { id: refund.id }, {
+			status: 'recouped',
+		});
+
+		return NextResponse.json<ApiResponse<{ transfer_id: string }>>({
+			ok: true,
+			data: { transfer_id: 'sim_dwolla_collect_' + refund.id },
+		});
+	} catch (e: any) {
+		return NextResponse.json<ApiResponse<null>>({ ok: false, error: e.message }, { status: 400 });
+	}
+}
+

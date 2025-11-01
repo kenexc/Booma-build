@@ -88,7 +88,7 @@ export async function POST(req: Request) {
 	}
 
 	const eventType = event.type as string;
-	if (eventType === 'refund.succeeded' || eventType === 'refund.updated') {
+	if (eventType === 'refund.created' || eventType === 'refund.updated' || eventType === 'refund.succeeded' || eventType === 'refund.failed') {
 		const refund = (event as any).data.object as Stripe.Refund;
 			const amount_cents = refund.amount;
 			const chargeId = typeof refund.charge === 'string' ? refund.charge : (refund.charge as Stripe.Charge | null)?.id ?? null;
@@ -133,6 +133,12 @@ export async function POST(req: Request) {
 			}
 
 		return NextResponse.json({ ok: true });
+	}
+
+	const eventTypeStr = event.type as string;
+	if (eventTypeStr === 'charge.succeeded') {
+		// Optional bookkeeping - can log or track charge if needed
+		return NextResponse.json({ ok: true, handled: true });
 	}
 
 	// Unhandled event types
