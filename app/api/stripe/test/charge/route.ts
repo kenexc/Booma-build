@@ -23,8 +23,7 @@ export async function POST() {
 		});
 
 		// get the underlying charge id
-		const ch = (pi.charges?.data && pi.charges.data[0]) || null;
-		const chargeId = ch?.id || pi.latest_charge;
+		const chargeId = typeof pi.latest_charge === 'string' ? pi.latest_charge : null;
 
 		return NextResponse.json({
 			ok: true,

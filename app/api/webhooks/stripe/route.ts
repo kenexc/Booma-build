@@ -87,8 +87,9 @@ export async function POST(req: Request) {
 		return NextResponse.json({ ok: true });
 	}
 
-	if (event.type === 'refund.succeeded') {
-		const refund = event.data.object as Stripe.Refund;
+	const eventType = event.type as string;
+	if (eventType === 'refund.succeeded' || eventType === 'refund.updated') {
+		const refund = (event as any).data.object as Stripe.Refund;
 			const amount_cents = refund.amount;
 			const chargeId = typeof refund.charge === 'string' ? refund.charge : (refund.charge as Stripe.Charge | null)?.id ?? null;
 			const refundId = refund.id;
