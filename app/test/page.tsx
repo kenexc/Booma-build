@@ -493,16 +493,17 @@ export default function TestConsole() {
 												</Button>
 												<Button
 													onClick={() => {
-														console.log('Simulate Posted clicked', selectedRefundId, selectedRefund?.status);
+														console.log('Simulate Posted clicked', { selectedRefundId, status: selectedRefund?.status, refund: selectedRefund });
 														firePlaidWebhook();
 													}}
-													disabled={!selectedRefundId || selectedRefund?.status !== 'instant_sent'}
+													disabled={!selectedRefundId || !selectedRefund || selectedRefund.status !== 'instant_sent'}
 													variant="secondary"
 													size="sm"
 													className="w-full"
+													title={selectedRefund?.status === 'instant_sent' ? 'Mark refund as posted' : `Current status: ${selectedRefund?.status || 'none'}`}
 												>
 													<Clock className="h-4 w-4 mr-2" />
-													{selectedRefund?.status !== 'instant_sent' ? 'Waiting for instant_sent...' : 'Simulate Posted'}
+													{selectedRefund?.status !== 'instant_sent' ? `Waiting for instant_sent... (${selectedRefund?.status || 'none'})` : 'Simulate Posted'}
 												</Button>
 												<Button
 													onClick={collectRefund}
