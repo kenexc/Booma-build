@@ -6,7 +6,7 @@
       "DOM"
     ],
     "module": "ESNext",
-    "moduleResolution": "Bundler",
+    "moduleResolution": "bundler",
     "strict": true,
     "noUncheckedIndexedAccess": true,
     "noImplicitOverride": true,
@@ -26,6 +26,9 @@
       ],
       "@/app/*": [
         "app/*"
+      ],
+      "@/components/*": [
+        "components/*"
       ]
     },
     "allowJs": true,

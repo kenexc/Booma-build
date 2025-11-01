@@ -9,6 +9,7 @@ import type { ApiResponse, RefundRecord } from '@/lib/types';
 import { calcFeeCents } from '@/lib/types';
 
 export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
 
 export async function GET(_req: NextRequest, context: { params: { id: string } }) {
 	const id = context.params.id;

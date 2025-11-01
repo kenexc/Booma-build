@@ -8,6 +8,7 @@ import { getSupabaseAdmin } from '@/lib/db';
 import type { ApiResponse, RefundRecord } from '@/lib/types';
 
 export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
 
 export async function GET(_req: NextRequest) {
 	const sb = getSupabaseAdmin();

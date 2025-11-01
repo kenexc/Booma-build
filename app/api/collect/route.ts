@@ -11,6 +11,7 @@ import { createCustomerIfMissing, createFundingSourceIfMissing, initiateTransfer
 import { logError, logInfo } from '@/lib/logger';
 
 export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
 
 export async function POST(req: NextRequest) {
 	try {

@@ -10,6 +10,7 @@ import { logError, logInfo, logWarn } from '@/lib/logger';
 import type { ApiResponse, RefundRecord } from '@/lib/types';
 
 export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
 
 async function getOrCreateDemoUserId(): Promise<string> {
 	const sb = getSupabaseAdmin();

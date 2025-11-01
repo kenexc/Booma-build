@@ -9,6 +9,7 @@ import { selectOne, update } from '@/lib/db';
 import type { ApiResponse, RefundRecord } from '@/lib/types';
 
 export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
 
 export async function POST(req: NextRequest) {
 	const body = (await req.json().catch(() => null)) as { refund_id?: string } | null;
