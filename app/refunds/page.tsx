@@ -1,7 +1,13 @@
 /*********
-Purpose: List refunds for quick demo to investors/admins.
+Purpose: List refunds for quick demo to investors/admins with polished fintech UI.
 Assumptions: Uses server-side fetch to call API route.
 *********/
+
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Badge } from '@/components/ui/badge';
+import { CreditCard } from 'lucide-react';
+import Link from 'next/link';
 
 interface ApiResponse<T> { ok: boolean; data?: T; error?: string }
 
@@ -27,6 +33,21 @@ function getBaseUrl(): string {
 	return 'http://localhost:3000';
 }
 
+function getStatusBadgeVariant(status: string) {
+	switch (status) {
+		case 'approved':
+		case 'recouped':
+			return 'success';
+		case 'instant_sent':
+		case 'posted':
+			return 'default';
+		case 'failed':
+			return 'destructive';
+		default:
+			return 'secondary';
+	}
+}
+
 async function loadRefunds(): Promise<RefundRow[]> {
 	const res = await fetch(`${getBaseUrl()}/api/refunds/list`, { cache: 'no-store' });
 	if (!res.ok) return [];
@@ -37,30 +58,63 @@ async function loadRefunds(): Promise<RefundRow[]> {
 export default async function RefundsPage() {
 	const refunds = await loadRefunds();
 	return (
-		<div>
-			<h2>Refunds</h2>
-			<table style={{ width: '100%', borderCollapse: 'collapse' }}>
-				<thead>
-					<tr>
-						<th style={{ textAlign: 'left' }}>ID</th>
-						<th style={{ textAlign: 'left' }}>Amount</th>
-						<th style={{ textAlign: 'left' }}>Status</th>
-						<th style={{ textAlign: 'left' }}>Card</th>
-						<th style={{ textAlign: 'left' }}>Created</th>
-					</tr>
-				</thead>
-				<tbody>
-					{refunds.map((r) => (
-						<tr key={r.id}>
-							<td><a href={`/refunds/${r.id}`}>{r.id.slice(0, 8)}…</a></td>
-							<td>${(r.amount_cents / 100).toFixed(2)}</td>
-							<td>{r.status}</td>
-							<td>{r.card_last4 ? `•••• ${r.card_last4}` : 'n/a'}</td>
-							<td>{r.created_at ? new Date(r.created_at).toLocaleString() : ''}</td>
-						</tr>
-					))}
-				</tbody>
-			</table>
+		<div className="space-y-8">
+			<div>
+				<h1 className="text-3xl font-bold tracking-tight flex items-center gap-2">
+					<CreditCard className="h-8 w-8" />
+					Refunds
+				</h1>
+				<p className="text-muted-foreground mt-2">View and manage all refund records</p>
+			</div>
+
+			<Card>
+				<CardHeader>
+					<CardTitle>Recent Refunds</CardTitle>
+					<CardDescription>Latest 25 refund records from your database</CardDescription>
+				</CardHeader>
+				<CardContent>
+					<div className="rounded-md border">
+						<Table>
+							<TableHeader>
+								<TableRow>
+									<TableHead>ID</TableHead>
+									<TableHead>Amount</TableHead>
+									<TableHead>Status</TableHead>
+									<TableHead>Card</TableHead>
+									<TableHead>Created</TableHead>
+								</TableRow>
+							</TableHeader>
+							<TableBody>
+								{refunds.length === 0 ? (
+									<TableRow>
+										<TableCell colSpan={5} className="text-center text-muted-foreground py-8">
+											No refunds found
+										</TableCell>
+									</TableRow>
+								) : (
+									refunds.map((r) => (
+										<TableRow key={r.id} className="hover:bg-muted/50">
+											<TableCell className="font-mono text-xs">
+												<Link href={`/refunds/${r.id}`} className="hover:underline text-primary">
+													{r.id.slice(0, 8)}…
+												</Link>
+											</TableCell>
+											<TableCell className="font-medium">${(r.amount_cents / 100).toFixed(2)}</TableCell>
+											<TableCell>
+												<Badge variant={getStatusBadgeVariant(r.status)}>{r.status}</Badge>
+											</TableCell>
+											<TableCell>{r.card_last4 ? `•••• ${r.card_last4}` : <span className="text-muted-foreground">n/a</span>}</TableCell>
+											<TableCell className="text-muted-foreground text-sm">
+												{r.created_at ? new Date(r.created_at).toLocaleString() : ''}
+											</TableCell>
+										</TableRow>
+									))
+								)}
+							</TableBody>
+						</Table>
+					</div>
+				</CardContent>
+			</Card>
 		</div>
 	);
 }

@@ -1,6 +1,12 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Badge } from '@/components/ui/badge';
+import { Separator } from '@/components/ui/separator';
+import { ArrowRight, RefreshCw, Play, CheckCircle2, XCircle, CreditCard, TrendingUp } from 'lucide-react';
 
 type ChargeRow = {
 	id: string;
@@ -19,6 +25,23 @@ type RefundRow = {
 	processor_refund_id?: string | null;
 	created_at?: string | null;
 };
+
+function getStatusBadgeVariant(status: string) {
+	switch (status) {
+		case 'approved':
+		case 'succeeded':
+		case 'recouped':
+			return 'success';
+		case 'instant_sent':
+		case 'posted':
+			return 'default';
+		case 'failed':
+		case 'refunded':
+			return 'destructive';
+		default:
+			return 'secondary';
+	}
+}
 
 export default function TestConsole() {
 	const [charges, setCharges] = useState<ChargeRow[]>([]);
@@ -62,10 +85,10 @@ export default function TestConsole() {
 		const res = await fetch('/api/stripe/test/charge', { method: 'POST' });
 		const j = await res.json();
 		if (j.ok) {
-			setLog(l => [`Charge created: ${j.charge_id}`, ...l]);
+			setLog(l => [`✓ Charge created: ${j.charge_id}`, ...l]);
 			await loadCharges();
 		} else {
-			setLog(l => [`Error: ${j.error}`, ...l]);
+			setLog(l => [`✗ Error: ${j.error}`, ...l]);
 		}
 		setCreating(false);
 	}
@@ -79,9 +102,9 @@ export default function TestConsole() {
 		});
 		const j = await res.json();
 		if (j.ok) {
-			setLog(l => [`Refund requested: ${j.refund_id}. Wait for webhook...`, ...l]);
+			setLog(l => [`✓ Refund requested: ${j.refund_id}. Waiting for webhook...`, ...l]);
 		} else {
-			setLog(l => [`Error: ${j.error}`, ...l]);
+			setLog(l => [`✗ Error: ${j.error}`, ...l]);
 		}
 		setTimeout(() => {
 			loadCharges();
@@ -90,7 +113,7 @@ export default function TestConsole() {
 	}
 
 	async function advanceRefund() {
-		if (!selectedRefundId) return setLog(l => ['No refund selected', ...l]);
+		if (!selectedRefundId) return setLog(l => ['✗ No refund selected', ...l]);
 		setLog(l => ['Advancing refund...', ...l]);
 		const res = await fetch('/api/dwolla/sim/advance', {
 			method: 'POST',
@@ -99,9 +122,9 @@ export default function TestConsole() {
 		});
 		const j = await res.json();
 		if (j.ok) {
-			setLog(l => [`Advance completed: ${j.data?.transfer_id}`, ...l]);
+			setLog(l => [`✓ Advance completed: ${j.data?.transfer_id}`, ...l]);
 		} else {
-			setLog(l => [`Error: ${j.error}`, ...l]);
+			setLog(l => [`✗ Error: ${j.error}`, ...l]);
 		}
 		await loadRefunds();
 	}
@@ -112,15 +135,15 @@ export default function TestConsole() {
 		const j = await res.json();
 		if (j.ok) {
 			setPlaidAccessToken(j.access_token);
-			setLog(l => [`Plaid link created. Access token saved.`, ...l]);
+			setLog(l => [`✓ Plaid link created. Access token saved.`, ...l]);
 		} else {
-			setLog(l => [`Error: ${j.error}`, ...l]);
+			setLog(l => [`✗ Error: ${j.error}`, ...l]);
 		}
 	}
 
 	async function firePlaidWebhook() {
 		if (!plaidAccessToken) {
-			setLog(l => ['No Plaid access token. Create link first.', ...l]);
+			setLog(l => ['✗ No Plaid access token. Create link first.', ...l]);
 			return;
 		}
 		setLog(l => ['Firing Plaid webhook...', ...l]);
@@ -131,15 +154,15 @@ export default function TestConsole() {
 		});
 		const j = await res.json();
 		if (j.ok) {
-			setLog(l => ['Plaid webhook fired. Checking refunds...', ...l]);
+			setLog(l => ['✓ Plaid webhook fired. Checking refunds...', ...l]);
 		} else {
-			setLog(l => [`Error: ${j.error}`, ...l]);
+			setLog(l => [`✗ Error: ${j.error}`, ...l]);
 		}
 		setTimeout(loadRefunds, 2000);
 	}
 
 	async function collectRefund() {
-		if (!selectedRefundId) return setLog(l => ['No refund selected', ...l]);
+		if (!selectedRefundId) return setLog(l => ['✗ No refund selected', ...l]);
 		setLog(l => ['Collecting refund...', ...l]);
 		const res = await fetch('/api/dwolla/sim/collect', {
 			method: 'POST',
@@ -148,9 +171,9 @@ export default function TestConsole() {
 		});
 		const j = await res.json();
 		if (j.ok) {
-			setLog(l => [`Collect completed: ${j.data?.transfer_id}`, ...l]);
+			setLog(l => [`✓ Collect completed: ${j.data?.transfer_id}`, ...l]);
 		} else {
-			setLog(l => [`Error: ${j.error}`, ...l]);
+			setLog(l => [`✗ Error: ${j.error}`, ...l]);
 		}
 		await loadRefunds();
 	}
@@ -158,122 +181,206 @@ export default function TestConsole() {
 	const selectedRefund = refunds.find(r => r.id === selectedRefundId);
 
 	return (
-		<main style={{ padding: 24, maxWidth: 1024, margin: '0 auto' }}>
-			<h1 style={{ fontSize: 24, fontWeight: 600, marginBottom: 8 }}>Booma Test Console</h1>
-			<p style={{ fontSize: 14, color: '#666', marginTop: 4 }}>
-				Create a Stripe test charge, refund it here, let the webhook write your refund row, then use your Advance → Posted → Collect actions.
-			</p>
-
-			<div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 16, flexWrap: 'wrap' }}>
-				<button onClick={createCharge} disabled={creating} style={{ padding: '8px 12px', borderRadius: 4, background: '#000', color: '#fff', border: 'none', cursor: creating ? 'not-allowed' : 'pointer', opacity: creating ? 0.6 : 1 }}>
-					{creating ? 'Creating…' : 'Create $42 test charge'}
-				</button>
-				<button onClick={loadCharges} disabled={refreshing} style={{ padding: '8px 12px', borderRadius: 4, border: '1px solid #ccc', background: '#fff', cursor: refreshing ? 'not-allowed' : 'pointer', opacity: refreshing ? 0.6 : 1 }}>
-					{refreshing ? 'Refreshing…' : 'Refresh charges'}
-				</button>
-				<button onClick={loadRefunds} disabled={loadingRefunds} style={{ padding: '8px 12px', borderRadius: 4, border: '1px solid #ccc', background: '#fff', cursor: loadingRefunds ? 'not-allowed' : 'pointer', opacity: loadingRefunds ? 0.6 : 1 }}>
-					{loadingRefunds ? 'Loading…' : 'Refresh refunds'}
-				</button>
-				<a href="/refunds" style={{ padding: '8px 12px', borderRadius: 4, border: '1px solid #ccc', textDecoration: 'none', color: '#000' }}>Open Refunds table</a>
+		<div className="space-y-8">
+			<div>
+				<h1 className="text-3xl font-bold tracking-tight">Test Console</h1>
+				<p className="text-muted-foreground mt-2">Manage test charges, refunds, and simulate the complete refund flow</p>
 			</div>
 
-			<h2 style={{ fontSize: 18, fontWeight: 500, marginTop: 24 }}>Recent charges</h2>
-			<div style={{ marginTop: 8, border: '1px solid #ccc', borderRadius: 4 }}>
-				<table style={{ width: '100%', fontSize: 14 }}>
-					<thead style={{ background: '#f5f5f5' }}>
-						<tr>
-							<th style={{ textAlign: 'left', padding: 8 }}>Charge</th>
-							<th style={{ textAlign: 'left', padding: 8 }}>Amount</th>
-							<th style={{ textAlign: 'left', padding: 8 }}>Status</th>
-							<th style={{ textAlign: 'left', padding: 8 }}>Refunded</th>
-							<th style={{ textAlign: 'left', padding: 8 }}>Action</th>
-						</tr>
-					</thead>
-					<tbody>
-						{charges.map(c => (
-							<tr key={c.id} style={{ borderTop: '1px solid #eee' }}>
-								<td style={{ padding: 8 }}>{c.id}</td>
-								<td style={{ padding: 8 }}>${(c.amount_cents / 100).toFixed(2)} {c.currency.toUpperCase()}</td>
-								<td style={{ padding: 8 }}>{c.status}</td>
-								<td style={{ padding: 8 }}>{c.refunded ? 'Yes' : 'No'}</td>
-								<td style={{ padding: 8 }}>
-									<button
-										onClick={() => refundCharge(c.id)}
-										disabled={c.refunded}
-										style={{ padding: '4px 8px', borderRadius: 4, background: '#2563eb', color: '#fff', border: 'none', cursor: c.refunded ? 'not-allowed' : 'pointer', opacity: c.refunded ? 0.5 : 1 }}
-									>
-										Refund
-									</button>
-								</td>
-							</tr>
-						))}
-						{charges.length === 0 && (
-							<tr><td style={{ padding: 8 }} colSpan={5}>No charges yet.</td></tr>
+			<div className="grid gap-6 md:grid-cols-2">
+				<Card>
+					<CardHeader>
+						<div className="flex items-center justify-between">
+							<CardTitle className="flex items-center gap-2">
+								<CreditCard className="h-5 w-5" />
+								Stripe Charges
+							</CardTitle>
+							<Button variant="outline" size="sm" onClick={loadCharges} disabled={refreshing}>
+								<RefreshCw className={`h-4 w-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
+								Refresh
+							</Button>
+						</div>
+						<CardDescription>Recent test charges from Stripe sandbox</CardDescription>
+					</CardHeader>
+					<CardContent>
+						<div className="flex gap-2 mb-4">
+							<Button onClick={createCharge} disabled={creating} className="flex-1">
+								{creating ? (
+									<>
+										<RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+										Creating...
+									</>
+								) : (
+									<>
+										<Play className="h-4 w-4 mr-2" />
+										Create $42 Charge
+									</>
+								)}
+							</Button>
+						</div>
+						<div className="rounded-md border">
+							<Table>
+								<TableHeader>
+									<TableRow>
+										<TableHead>Charge ID</TableHead>
+										<TableHead>Amount</TableHead>
+										<TableHead>Status</TableHead>
+										<TableHead>Refunded</TableHead>
+										<TableHead className="w-[100px]">Action</TableHead>
+									</TableRow>
+								</TableHeader>
+								<TableBody>
+									{charges.length === 0 ? (
+										<TableRow>
+											<TableCell colSpan={5} className="text-center text-muted-foreground py-8">
+												No charges yet. Create one to get started.
+											</TableCell>
+										</TableRow>
+									) : (
+										charges.map(c => (
+											<TableRow key={c.id}>
+												<TableCell className="font-mono text-xs">{c.id.slice(0, 16)}...</TableCell>
+												<TableCell className="font-medium">${(c.amount_cents / 100).toFixed(2)}</TableCell>
+												<TableCell>
+													<Badge variant={c.status === 'succeeded' ? 'success' : 'secondary'}>{c.status}</Badge>
+												</TableCell>
+												<TableCell>
+													{c.refunded ? (
+														<Badge variant="success">
+															<CheckCircle2 className="h-3 w-3 mr-1" />
+															Yes
+														</Badge>
+													) : (
+														<Badge variant="outline">
+															<XCircle className="h-3 w-3 mr-1" />
+															No
+														</Badge>
+													)}
+												</TableCell>
+												<TableCell>
+													<Button
+														size="sm"
+														variant="outline"
+														onClick={() => refundCharge(c.id)}
+														disabled={c.refunded}
+													>
+														Refund
+													</Button>
+												</TableCell>
+											</TableRow>
+										))
+									)}
+								</TableBody>
+							</Table>
+						</div>
+					</CardContent>
+				</Card>
+
+				<Card>
+					<CardHeader>
+						<div className="flex items-center justify-between">
+							<CardTitle className="flex items-center gap-2">
+								<TrendingUp className="h-5 w-5" />
+								Refund Actions
+							</CardTitle>
+							<Button variant="outline" size="sm" onClick={loadRefunds} disabled={loadingRefunds}>
+								<RefreshCw className={`h-4 w-4 mr-2 ${loadingRefunds ? 'animate-spin' : ''}`} />
+								Refresh
+							</Button>
+						</div>
+						<CardDescription>Manage refund lifecycle and simulate payment flows</CardDescription>
+					</CardHeader>
+					<CardContent className="space-y-4">
+						<div className="space-y-2">
+							<label className="text-sm font-medium">Selected Refund</label>
+							<select
+								value={selectedRefundId}
+								onChange={(e) => setSelectedRefundId(e.target.value)}
+								disabled={refunds.length === 0}
+								className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+							>
+								{refunds.length === 0 ? (
+									<option value="">No refunds yet</option>
+								) : (
+									refunds.map(r => (
+										<option key={r.id} value={r.id}>
+											{r.id.slice(0, 8)}… - ${(r.amount_cents / 100).toFixed(2)} - {r.status}
+										</option>
+									))
+								)}
+							</select>
+						</div>
+
+						{selectedRefund && (
+							<div className="p-4 rounded-lg bg-muted">
+								<div className="flex items-center justify-between mb-2">
+									<span className="text-sm font-medium">Status</span>
+									<Badge variant={getStatusBadgeVariant(selectedRefund.status)}>{selectedRefund.status}</Badge>
+								</div>
+								<div className="flex items-center justify-between">
+									<span className="text-sm font-medium">Amount</span>
+									<span className="text-sm font-semibold">${(selectedRefund.amount_cents / 100).toFixed(2)}</span>
+								</div>
+							</div>
 						)}
-					</tbody>
-				</table>
+
+						<Separator />
+
+						<div className="grid grid-cols-2 gap-2">
+							<Button
+								onClick={advanceRefund}
+								disabled={!selectedRefundId || selectedRefund?.status !== 'approved'}
+								variant="default"
+								className="w-full"
+							>
+								<ArrowRight className="h-4 w-4 mr-2" />
+								Advance
+							</Button>
+							<Button onClick={createPlaidLink} variant="secondary" className="w-full">
+								Plaid Link
+							</Button>
+							<Button
+								onClick={firePlaidWebhook}
+								disabled={!plaidAccessToken || selectedRefund?.status !== 'instant_sent'}
+								variant="secondary"
+								className="w-full"
+							>
+								Simulate Posted
+							</Button>
+							<Button
+								onClick={collectRefund}
+								disabled={!selectedRefundId || (selectedRefund?.status !== 'posted' && selectedRefund?.status !== 'instant_sent')}
+								variant="destructive"
+								className="w-full"
+							>
+								Collect
+							</Button>
+						</div>
+					</CardContent>
+				</Card>
 			</div>
 
-			<h2 style={{ fontSize: 18, fontWeight: 500, marginTop: 24 }}>Refunds & Actions</h2>
-			<div style={{ marginTop: 8, border: '1px solid #ccc', borderRadius: 4, padding: 16 }}>
-				<div style={{ marginBottom: 12 }}>
-					<label style={{ display: 'block', marginBottom: 4, fontSize: 14, fontWeight: 500 }}>Selected Refund:</label>
-					<select
-						value={selectedRefundId}
-						onChange={(e) => setSelectedRefundId(e.target.value)}
-						style={{ width: '100%', padding: 8, borderRadius: 4, border: '1px solid #ccc' }}
-					>
-						{refunds.length === 0 ? (
-							<option value="">No refunds yet</option>
+			<Card>
+				<CardHeader>
+					<CardTitle>Activity Log</CardTitle>
+					<CardDescription>Real-time log of all test operations</CardDescription>
+				</CardHeader>
+				<CardContent>
+					<div className="rounded-md border bg-muted/50 p-4 max-h-[300px] overflow-y-auto">
+						{log.length === 0 ? (
+							<p className="text-sm text-muted-foreground text-center py-4">No activity yet</p>
 						) : (
-							refunds.map(r => (
-								<option key={r.id} value={r.id}>
-									{r.id.slice(0, 8)}… - ${(r.amount_cents / 100).toFixed(2)} - {r.status}
-								</option>
-							))
+							<ul className="space-y-1 text-sm font-mono">
+								{log.map((line, i) => (
+									<li key={i} className={line.startsWith('✓') ? 'text-green-600' : line.startsWith('✗') ? 'text-red-600' : ''}>
+										{line}
+									</li>
+								))}
+							</ul>
 						)}
-					</select>
-				</div>
-				{selectedRefund && (
-					<div style={{ marginBottom: 12, padding: 8, background: '#f5f5f5', borderRadius: 4, fontSize: 14 }}>
-						<strong>Status:</strong> {selectedRefund.status} | <strong>Amount:</strong> ${(selectedRefund.amount_cents / 100).toFixed(2)}
 					</div>
-				)}
-				<div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-					<button
-						onClick={advanceRefund}
-						disabled={!selectedRefundId || selectedRefund?.status !== 'approved'}
-						style={{ padding: '8px 12px', borderRadius: 4, background: '#10b981', color: '#fff', border: 'none', cursor: (!selectedRefundId || selectedRefund?.status !== 'approved') ? 'not-allowed' : 'pointer', opacity: (!selectedRefundId || selectedRefund?.status !== 'approved') ? 0.5 : 1 }}
-					>
-						Advance
-					</button>
-					<button
-						onClick={createPlaidLink}
-						style={{ padding: '8px 12px', borderRadius: 4, background: '#6366f1', color: '#fff', border: 'none', cursor: 'pointer' }}
-					>
-						Create Plaid Link
-					</button>
-					<button
-						onClick={firePlaidWebhook}
-						disabled={!plaidAccessToken || (selectedRefund?.status !== 'instant_sent')}
-						style={{ padding: '8px 12px', borderRadius: 4, background: '#8b5cf6', color: '#fff', border: 'none', cursor: (!plaidAccessToken || selectedRefund?.status !== 'instant_sent') ? 'not-allowed' : 'pointer', opacity: (!plaidAccessToken || selectedRefund?.status !== 'instant_sent') ? 0.5 : 1 }}
-					>
-						Simulate Posted (Plaid)
-					</button>
-					<button
-						onClick={collectRefund}
-						disabled={!selectedRefundId || (selectedRefund?.status !== 'posted' && selectedRefund?.status !== 'instant_sent')}
-						style={{ padding: '8px 12px', borderRadius: 4, background: '#f59e0b', color: '#fff', border: 'none', cursor: (!selectedRefundId || (selectedRefund?.status !== 'posted' && selectedRefund?.status !== 'instant_sent')) ? 'not-allowed' : 'pointer', opacity: (!selectedRefundId || (selectedRefund?.status !== 'posted' && selectedRefund?.status !== 'instant_sent')) ? 0.5 : 1 }}
-					>
-						Collect
-					</button>
-				</div>
-			</div>
-
-			<h2 style={{ fontSize: 18, fontWeight: 500, marginTop: 24 }}>Log</h2>
-			<ul style={{ marginTop: 8, listStyle: 'disc', paddingLeft: 20 }}>
-				{log.map((line, i) => <li key={i} style={{ marginBottom: 4 }}>{line}</li>)}
-			</ul>
-		</main>
+				</CardContent>
+			</Card>
+		</div>
 	);
 }
