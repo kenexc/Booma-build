@@ -19,6 +19,7 @@ export async function POST(req: Request) {
 		const resp = await plaidPost('/sandbox/item/fire_webhook', {
 			access_token,
 			webhook_code: 'DEFAULT_UPDATE',
+			webhook_type: 'TRANSACTIONS',
 		});
 
 		return NextResponse.json({ ok: true, webhook_fired: resp.webhook_fired });
