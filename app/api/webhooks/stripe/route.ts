@@ -3,14 +3,15 @@ Purpose: Stripe webhook endpoint to process refund-related events.
 Assumptions: Uses STRIPE_WEBHOOK_SECRET to verify signature with raw body. Placeholder user matching is implemented and will be replaced once accounts are linked.
 *********/
 
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import Stripe from 'stripe';
 import { getSupabaseAdmin, insert, selectOne, update } from '@/lib/db';
-import { logError, logInfo, logWarn } from '@/lib/logger';
-import type { ApiResponse, RefundRecord } from '@/lib/types';
+import type { RefundRecord } from '@/lib/types';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
+
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, { apiVersion: '2023-10-16' });
 
 async function getOrCreateDemoUserId(): Promise<string> {
 	const sb = getSupabaseAdmin();
@@ -26,36 +27,21 @@ async function getOrCreateDemoUserId(): Promise<string> {
 	return created.id as string;
 }
 
-export async function POST(req: NextRequest) {
+export async function POST(req: Request) {
+	const sig = req.headers.get('stripe-signature')!;
+	const raw = await req.text();
+
+	let event: Stripe.Event;
 	try {
-		const secret = process.env.STRIPE_WEBHOOK_SECRET;
-		const apiKey = process.env.STRIPE_SECRET_KEY;
-		if (!secret || !apiKey) {
-			return NextResponse.json<ApiResponse<null>>({ ok: false, error: 'Stripe env not configured' }, { status: 500 });
-		}
+		event = stripe.webhooks.constructEvent(raw, sig, process.env.STRIPE_WEBHOOK_SECRET!);
+	} catch (e: any) {
+		return new NextResponse(`Webhook Error: ${e.message}`, { status: 400 });
+	}
 
-		const signature = req.headers.get('stripe-signature');
-		if (!signature) {
-			return NextResponse.json<ApiResponse<null>>({ ok: false, error: 'Missing signature' }, { status: 400 });
-		}
+	// Placeholder user matching: we currently assign to a demo user until accounts are linked.
+	const userId = await getOrCreateDemoUserId();
 
-		const raw = await req.text();
-		const stripe = new Stripe(apiKey, { apiVersion: '2023-10-16' });
-		let event: Stripe.Event;
-		try {
-			event = stripe.webhooks.constructEvent(raw, signature, secret);
-		} catch (err) {
-			logWarn('Stripe webhook signature verification failed');
-			return NextResponse.json<ApiResponse<null>>({ ok: false, error: 'Invalid signature' }, { status: 400 });
-		}
-
-		// Placeholder user matching: we currently assign to a demo user until accounts are linked.
-		const userId = await getOrCreateDemoUserId();
-
-		const admin = getSupabaseAdmin();
-
-		const eventType = (event as any).type as string;
-		if (eventType === 'charge.refunded') {
+	if (event.type === 'charge.refunded') {
 			const charge = event.data.object as Stripe.Charge;
 			const latestRefund = charge.refunds?.data?.[charge.refunds.data.length - 1];
 			const amount_cents = latestRefund?.amount ?? charge.amount_refunded ?? 0;
@@ -98,11 +84,11 @@ export async function POST(req: NextRequest) {
 				});
 			}
 
-			return NextResponse.json<ApiResponse<{ handled: boolean }>>({ ok: true, data: { handled: true } });
-		}
+		return NextResponse.json({ ok: true });
+	}
 
-		if (eventType === 'refund.succeeded') {
-			const refund = (event as any).data.object as Stripe.Refund;
+	if (event.type === 'refund.succeeded') {
+		const refund = event.data.object as Stripe.Refund;
 			const amount_cents = refund.amount;
 			const chargeId = typeof refund.charge === 'string' ? refund.charge : (refund.charge as Stripe.Charge | null)?.id ?? null;
 			const refundId = refund.id;
@@ -145,14 +131,9 @@ export async function POST(req: NextRequest) {
 				});
 			}
 
-			return NextResponse.json<ApiResponse<{ handled: boolean }>>({ ok: true, data: { handled: true } });
-		}
-
-		logInfo(`Unhandled Stripe event ${eventType}`);
-		return NextResponse.json<ApiResponse<{ handled: boolean }>>({ ok: true, data: { handled: false } });
-	} catch (err) {
-		const message = err instanceof Error ? err.message : 'unknown error';
-		logError('Stripe webhook error', message);
-		return NextResponse.json<ApiResponse<null>>({ ok: false, error: message }, { status: 200 });
+		return NextResponse.json({ ok: true });
 	}
+
+	// Unhandled event types
+	return NextResponse.json({ ok: true });
 }
