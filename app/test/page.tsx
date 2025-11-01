@@ -190,38 +190,17 @@ export default function TestConsole() {
 
 
 	async function firePlaidWebhook() {
-		// Auto-create Plaid link if we don't have one yet
-		let token = plaidAccessToken;
-		if (!token) {
-			setLog(l => ['Creating Plaid sandbox link...', ...l]);
-			const linkRes = await fetch('/api/plaid/sandbox/link', { method: 'POST' });
-			const linkJson = await linkRes.json();
-			if (!linkJson.ok) {
-				setLog(l => [`✗ Error creating Plaid link: ${linkJson.error}`, ...l]);
-				return;
-			}
-			token = linkJson.access_token;
-			setPlaidAccessToken(token);
-			setLog(l => [`✓ Plaid link created. Firing webhook...`, ...l]);
-		}
-		
-		setLog(l => ['📨 Firing Plaid webhook (simulating bank transaction)...', ...l]);
-		const res = await fetch('/api/plaid/sandbox/transactions/fire', {
+		if (!selectedRefundId) return setLog(l => ['✗ No refund selected', ...l]);
+		setLog(l => ['📨 Simulating posted transaction (marking refund as posted)...', ...l]);
+		const res = await fetch('/api/demo/post', {
 			method: 'POST',
 			headers: { 'content-type': 'application/json' },
-			body: JSON.stringify({ access_token: token }),
+			body: JSON.stringify({ refund_id: selectedRefundId }),
 		});
 		const j = await res.json();
 		if (j.ok) {
-			setLog(l => [`✓ Plaid webhook fired! Checking for status update...`, ...l]);
-			// Poll more aggressively for the status change (webhook might take a moment)
-			setTimeout(async () => {
-				await loadRefunds();
-				setTimeout(async () => {
-					await loadRefunds();
-					setLog(l => [`   Status should now be: posted. If not, wait a few more seconds.`, ...l]);
-				}, 2000);
-			}, 1500);
+			setLog(l => [`✓ Refund status updated to: posted`, ...l]);
+			await loadRefunds();
 		} else {
 			setLog(l => [`✗ Error: ${j.error}`, ...l]);
 		}
