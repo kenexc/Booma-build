@@ -492,8 +492,11 @@ export default function TestConsole() {
 													{selectedRefund?.status !== 'approved' ? 'Waiting for approved...' : 'Advance'}
 												</Button>
 												<Button
-													onClick={firePlaidWebhook}
-													disabled={selectedRefund?.status !== 'instant_sent'}
+													onClick={() => {
+														console.log('Simulate Posted clicked', selectedRefundId, selectedRefund?.status);
+														firePlaidWebhook();
+													}}
+													disabled={!selectedRefundId || selectedRefund?.status !== 'instant_sent'}
 													variant="secondary"
 													size="sm"
 													className="w-full"
