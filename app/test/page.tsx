@@ -213,11 +213,18 @@ export default function TestConsole() {
 		});
 		const j = await res.json();
 		if (j.ok) {
-			setLog(l => [`✓ Plaid webhook fired! Refund status should change to: posted`, ...l]);
+			setLog(l => [`✓ Plaid webhook fired! Checking for status update...`, ...l]);
+			// Poll more aggressively for the status change (webhook might take a moment)
+			setTimeout(async () => {
+				await loadRefunds();
+				setTimeout(async () => {
+					await loadRefunds();
+					setLog(l => [`   Status should now be: posted. If not, wait a few more seconds.`, ...l]);
+				}, 2000);
+			}, 1500);
 		} else {
 			setLog(l => [`✗ Error: ${j.error}`, ...l]);
 		}
-		setTimeout(loadRefunds, 2000);
 	}
 
 	async function collectRefund() {
