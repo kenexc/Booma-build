@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -65,15 +65,17 @@ export default function TestConsole() {
 	const [loadingRefunds, setLoadingRefunds] = useState(false);
 	const [plaidAccessToken, setPlaidAccessToken] = useState<string>('');
 	const [autoRefreshPaused, setAutoRefreshPaused] = useState(false);
+	const chargesRef = useRef<ChargeRow[]>([]);
 
 	async function loadCharges() {
 		setRefreshing(true);
-		setCharges([]); // Clear table first
+		// Don't clear charges first - causes refunds to disappear temporarily
 		const res = await fetch('/api/stripe/test/charges/list', { cache: 'no-store' });
 		const j = await res.json();
 		if (j.ok) {
 			const newCharges = j.charges;
 			setCharges(newCharges);
+			chargesRef.current = newCharges; // Update ref
 			// Reload refunds after charges load to filter by current charges
 			const chargeIds = newCharges.map((c: ChargeRow) => c.id);
 			loadRefunds(chargeIds);
@@ -89,7 +91,7 @@ export default function TestConsole() {
 			const allRefunds = j.data || [];
 			// Only show refunds that match the currently visible charge(s)
 			// If no charges, show no refunds
-			const chargeIds = chargeIdsOverride || charges.map(c => c.id);
+			const chargeIds = chargeIdsOverride || chargesRef.current.map(c => c.id);
 			const filteredRefunds = chargeIds.length > 0 
 				? allRefunds.filter((r: RefundRow) => 
 					r.original_charge_id && chargeIds.includes(r.original_charge_id)
@@ -119,7 +121,9 @@ export default function TestConsole() {
 	useEffect(() => {
 		if (!autoRefreshPaused) {
 			const interval = setInterval(() => {
-				loadRefunds();
+				// Use ref to get latest charges value
+				const currentChargeIds = chargesRef.current.map(c => c.id);
+				loadRefunds(currentChargeIds.length > 0 ? currentChargeIds : undefined);
 			}, 3000); // Auto-refresh refunds every 3 seconds when not paused
 			return () => clearInterval(interval);
 		}
