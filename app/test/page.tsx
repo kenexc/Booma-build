@@ -76,7 +76,7 @@ export default function TestConsole() {
 			setCharges(newCharges);
 			// Reload refunds after charges load to filter by current charges
 			const chargeIds = newCharges.map((c: ChargeRow) => c.id);
-			setTimeout(() => loadRefunds(chargeIds), 100);
+			loadRefunds(chargeIds);
 		}
 		setRefreshing(false);
 	}
@@ -114,13 +114,16 @@ export default function TestConsole() {
 	useEffect(() => {
 		loadCharges();
 		loadRefunds();
-		const interval = setInterval(() => {
-			if (!autoRefreshPaused) {
+	}, []); // Only run once on mount
+
+	useEffect(() => {
+		if (!autoRefreshPaused) {
+			const interval = setInterval(() => {
 				loadRefunds();
-			}
-		}, 3000); // Auto-refresh refunds every 3 seconds when not paused
-		return () => clearInterval(interval);
-	}, [autoRefreshPaused, charges]); // Re-run when charges change to filter refunds
+			}, 3000); // Auto-refresh refunds every 3 seconds when not paused
+			return () => clearInterval(interval);
+		}
+	}, [autoRefreshPaused]); // Only re-run when auto-refresh pause state changes
 
 	async function createCharge() {
 		setCreating(true);
