@@ -23,6 +23,7 @@ type RefundRow = {
 	amount_cents: number;
 	status: string;
 	processor_refund_id?: string | null;
+	original_charge_id?: string | null;
 	created_at?: string | null;
 };
 
@@ -63,6 +64,7 @@ export default function TestConsole() {
 	const [refreshing, setRefreshing] = useState(false);
 	const [loadingRefunds, setLoadingRefunds] = useState(false);
 	const [plaidAccessToken, setPlaidAccessToken] = useState<string>('');
+	const [autoRefreshPaused, setAutoRefreshPaused] = useState(false);
 
 	async function loadCharges() {
 		setRefreshing(true);
@@ -95,12 +97,17 @@ export default function TestConsole() {
 	useEffect(() => {
 		loadCharges();
 		loadRefunds();
-		const interval = setInterval(loadRefunds, 3000); // Auto-refresh refunds every 3 seconds
+		const interval = setInterval(() => {
+			if (!autoRefreshPaused) {
+				loadRefunds();
+			}
+		}, 3000); // Auto-refresh refunds every 3 seconds when not paused
 		return () => clearInterval(interval);
-	}, []);
+	}, [autoRefreshPaused]);
 
 	async function createCharge() {
 		setCreating(true);
+		setAutoRefreshPaused(false); // Resume auto-refresh when creating new charge
 		setLog(l => ['Creating $42 test charge...', ...l]);
 		const res = await fetch('/api/stripe/test/charge', { method: 'POST' });
 		const j = await res.json();
@@ -114,6 +121,7 @@ export default function TestConsole() {
 	}
 
 	async function refundCharge(id: string) {
+		setAutoRefreshPaused(false); // Resume auto-refresh when refunding
 		setLog(l => [`Requesting refund for charge ${id.slice(0, 16)}...`, ...l]);
 		const res = await fetch('/api/stripe/test/refund', {
 			method: 'POST',
@@ -276,6 +284,7 @@ export default function TestConsole() {
 									setRefunds([]);
 									setSelectedRefundId('');
 									setLog([]);
+									setAutoRefreshPaused(true); // Pause auto-refresh after clearing
 								}}>
 									Clear All
 								</Button>
@@ -368,7 +377,10 @@ export default function TestConsole() {
 								<TrendingUp className="h-5 w-5" />
 								Refund Lifecycle
 							</CardTitle>
-							<Button variant="outline" size="sm" onClick={loadRefunds} disabled={loadingRefunds}>
+							<Button variant="outline" size="sm" onClick={() => {
+								setAutoRefreshPaused(false); // Resume auto-refresh when manually refreshing
+								loadRefunds();
+							}} disabled={loadingRefunds}>
 								<RefreshCw className={`h-4 w-4 mr-2 ${loadingRefunds ? 'animate-spin' : ''}`} />
 								Refresh
 							</Button>
