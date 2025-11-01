@@ -158,11 +158,12 @@ export default function TestConsole() {
 			// Refresh charges immediately to show refunded status
 			await loadCharges();
 			// Poll for refund record - webhook might take a moment
+			// Always pass the charge ID explicitly so refunds aren't filtered out
 			setTimeout(async () => {
-				await loadRefunds();
+				await loadRefunds([id]);
 				// Check again after a bit longer
 				setTimeout(async () => {
-					await loadRefunds();
+					await loadRefunds([id]);
 				}, 3000);
 			}, 2000);
 		} else {
