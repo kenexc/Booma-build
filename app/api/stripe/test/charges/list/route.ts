@@ -13,7 +13,13 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, { apiVersion: '2023-10
 
 export async function GET() {
 	try {
-		const charges = await stripe.charges.list({ limit: 10 });
+		// Only show the last 3 charges from the last hour for cleaner demo experience
+		// This ensures new demo users don't see old test charges
+		const oneHourAgo = Math.floor(Date.now() / 1000) - (60 * 60);
+		const charges = await stripe.charges.list({ 
+			limit: 3,
+			created: { gte: oneHourAgo }
+		});
 		const rows = charges.data.map(c => ({
 			id: c.id,
 			amount_cents: c.amount,

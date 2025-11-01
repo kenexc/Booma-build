@@ -78,9 +78,15 @@ export default function TestConsole() {
 		const res = await fetch('/api/refunds/list', { cache: 'no-store' });
 		const j = await res.json();
 		if (j.ok) {
-			setRefunds(j.data || []);
-			if (j.data && j.data.length > 0 && !selectedRefundId) {
-				setSelectedRefundId(j.data[0].id);
+			const refundList = j.data || [];
+			setRefunds(refundList);
+			// Always auto-select the first/most recent refund if list changes
+			if (refundList.length > 0) {
+				const firstRefundId = refundList[0].id;
+				// Update selection if current selection doesn't exist in list, or if no selection
+				if (!selectedRefundId || !refundList.find((r: RefundRow) => r.id === selectedRefundId)) {
+					setSelectedRefundId(firstRefundId);
+				}
 			}
 		}
 		setLoadingRefunds(false);
@@ -268,7 +274,7 @@ export default function TestConsole() {
 								</Button>
 							</div>
 						</div>
-						<CardDescription>Create test charges and refund them</CardDescription>
+						<CardDescription>Create test charges and refund them. Only shows the last 3 charges from the past hour.</CardDescription>
 					</CardHeader>
 					<CardContent>
 						<div className="flex gap-2 mb-4">
@@ -369,7 +375,7 @@ export default function TestConsole() {
 								<div className="space-y-2">
 									<label className="text-sm font-medium">Select Refund to Manage</label>
 									<select
-										value={selectedRefundId}
+										value={selectedRefundId || ''}
 										onChange={(e) => setSelectedRefundId(e.target.value)}
 										className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
 									>
@@ -381,7 +387,7 @@ export default function TestConsole() {
 									</select>
 								</div>
 
-								{selectedRefund && (
+								{selectedRefund ? (
 									<>
 										<Card className="bg-muted/50">
 											<CardContent className="pt-6">
@@ -468,6 +474,10 @@ export default function TestConsole() {
 											</div>
 										</div>
 									</>
+								) : (
+									<div className="p-4 rounded-lg border border-dashed text-center text-sm text-muted-foreground">
+										<p>Select a refund from the dropdown above</p>
+									</div>
 								)}
 							</>
 						)}
