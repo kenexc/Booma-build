@@ -190,19 +190,32 @@ export default function TestConsole() {
 
 
 	async function firePlaidWebhook() {
-		if (!selectedRefundId) return setLog(l => ['✗ No refund selected', ...l]);
+		if (!selectedRefundId) {
+			setLog(l => ['✗ No refund selected', ...l]);
+			return;
+		}
+		if (selectedRefund?.status !== 'instant_sent') {
+			setLog(l => [`✗ Refund status must be 'instant_sent', current: ${selectedRefund?.status || 'unknown'}`, ...l]);
+			return;
+		}
 		setLog(l => ['📨 Simulating posted transaction (marking refund as posted)...', ...l]);
-		const res = await fetch('/api/demo/post', {
-			method: 'POST',
-			headers: { 'content-type': 'application/json' },
-			body: JSON.stringify({ refund_id: selectedRefundId }),
-		});
-		const j = await res.json();
-		if (j.ok) {
-			setLog(l => [`✓ Refund status updated to: posted`, ...l]);
-			await loadRefunds();
-		} else {
-			setLog(l => [`✗ Error: ${j.error}`, ...l]);
+		try {
+			const res = await fetch('/api/demo/post', {
+				method: 'POST',
+				headers: { 'content-type': 'application/json' },
+				body: JSON.stringify({ refund_id: selectedRefundId }),
+			});
+			const j = await res.json();
+			if (j.ok) {
+				setLog(l => [`✓ Refund status updated to: posted`, ...l]);
+				// Get current charge IDs to ensure refund stays visible
+				const currentChargeIds = chargesRef.current.map(c => c.id);
+				await loadRefunds(currentChargeIds.length > 0 ? currentChargeIds : undefined);
+			} else {
+				setLog(l => [`✗ Error: ${j.error || 'Unknown error'}`, ...l]);
+			}
+		} catch (error: any) {
+			setLog(l => [`✗ Network error: ${error.message || 'Failed to update'}`, ...l]);
 		}
 	}
 
