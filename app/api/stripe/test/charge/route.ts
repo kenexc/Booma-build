@@ -17,7 +17,10 @@ export async function POST() {
 		const pi = await stripe.paymentIntents.create({
 			amount: 4200,
 			currency: 'usd',
-			automatic_payment_methods: { enabled: true },
+			automatic_payment_methods: {
+				enabled: true,
+				allow_redirects: 'never',
+			},
 			payment_method: 'pm_card_visa', // test card
 			confirm: true,
 		});
