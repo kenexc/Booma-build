@@ -122,14 +122,20 @@ export default function TestConsole() {
 		});
 		const j = await res.json();
 		if (j.ok) {
-			setLog(l => [`✓ Refund created: ${j.refund_id}. Webhook will create refund record...`, ...l]);
+			setLog(l => [`✓ Refund created: ${j.refund_id}. Waiting for webhook to create refund record...`, ...l]);
+			// Refresh charges immediately to show refunded status
+			await loadCharges();
+			// Poll for refund record - webhook might take a moment
+			setTimeout(async () => {
+				await loadRefunds();
+				// Check again after a bit longer
+				setTimeout(async () => {
+					await loadRefunds();
+				}, 3000);
+			}, 2000);
 		} else {
 			setLog(l => [`✗ Error: ${j.error}`, ...l]);
 		}
-		setTimeout(() => {
-			loadCharges();
-			loadRefunds();
-		}, 2000);
 	}
 
 	async function advanceRefund() {
@@ -274,7 +280,7 @@ export default function TestConsole() {
 								</Button>
 							</div>
 						</div>
-						<CardDescription>Create test charges and refund them. Only shows the last 3 charges from the past hour.</CardDescription>
+						<CardDescription>Create test charges and refund them. Only shows the most recent charge you created.</CardDescription>
 					</CardHeader>
 					<CardContent>
 						<div className="flex gap-2 mb-4">
