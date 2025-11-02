@@ -76,7 +76,7 @@ export default function Page() {
 	const [refreshing, setRefreshing] = useState(false);
 	const [loadingRefunds, setLoadingRefunds] = useState(false);
 	const [plaidAccessToken, setPlaidAccessToken] = useState<string>('');
-	const [autoRefreshPaused, setAutoRefreshPaused] = useState(false);
+	const [autoRefreshPaused, setAutoRefreshPaused] = useState(true); // Start paused - user starts fresh
 	const chargesRef = useRef<ChargeRow[]>([]);
 
 	async function loadCharges() {
@@ -125,10 +125,11 @@ export default function Page() {
 		setLoadingRefunds(false);
 	}
 
-	useEffect(() => {
-		loadCharges();
-		loadRefunds();
-	}, []); // Only run once on mount
+	// Don't auto-load on mount - start with empty state
+	// useEffect(() => {
+	// 	loadCharges();
+	// 	loadRefunds();
+	// }, []); // Only run once on mount
 
 	useEffect(() => {
 		if (!autoRefreshPaused) {
