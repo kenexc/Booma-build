@@ -1,35 +1,32 @@
 /*********
-Purpose: App layout wrapper for Booma demo UI with shadcn styling.
+Purpose: App layout wrapper for Booma demo UI with shadcn styling and mobile optimization.
 Assumptions: Uses Tailwind CSS and shadcn components for polished fintech design.
 *********/
 
 import './globals.css';
 
 export const metadata = {
-	title: 'Booma Admin',
-	description: 'Fintech backend management dashboard',
+	title: 'Booma Demo Console',
+	description: 'Fintech backend demo and testing console',
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
 	return (
 		<html lang="en">
 			<body>
-				<header className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-					<div className="container flex h-16 items-center space-x-4 px-6">
-						<a href="/" className="text-lg font-semibold tracking-tight">
+				<header className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 sticky top-0 z-50">
+					<div className="container flex h-14 md:h-16 items-center justify-between px-4 md:px-6">
+						<a href="/" className="text-base md:text-lg font-semibold tracking-tight">
 							Booma
 						</a>
-						<nav className="flex items-center space-x-6">
-							<a href="/refunds" className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground">
-								Refunds
-							</a>
-							<a href="/test" className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground">
-								Test Console
+						<nav className="flex items-center space-x-4 md:space-x-6">
+							<a href="/test" className="text-xs md:text-sm font-medium text-muted-foreground transition-colors hover:text-foreground">
+								Console
 							</a>
 						</nav>
 					</div>
 				</header>
-				<main className="container mx-auto px-6 py-8">{children}</main>
+				<main className="container mx-auto px-4 md:px-6 py-4 md:py-8 max-w-7xl">{children}</main>
 			</body>
 		</html>
 	);

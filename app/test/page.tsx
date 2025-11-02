@@ -251,22 +251,22 @@ export default function TestConsole() {
 	const selectedRefund = refunds.find(r => r.id === selectedRefundId);
 
 	return (
-		<div className="space-y-8">
+		<div className="space-y-4 md:space-y-8">
 			<div>
-				<h1 className="text-3xl font-bold tracking-tight">Booma Demo Console</h1>
-				<p className="text-muted-foreground mt-2">
+				<h1 className="text-2xl md:text-3xl font-bold tracking-tight">Booma Demo Console</h1>
+				<p className="text-muted-foreground mt-1 md:mt-2 text-sm md:text-base">
 					Watch the complete refund flow: Charge → Refund → Advance → Posted → Collect
 				</p>
 			</div>
 
 			{/* Step-by-step guide */}
 			<Card className="border-primary/20 bg-primary/5">
-				<CardHeader>
-					<CardTitle className="text-lg">Quick Start Guide</CardTitle>
-					<CardDescription>Follow these steps to see the complete flow</CardDescription>
+				<CardHeader className="pb-3 md:pb-6">
+					<CardTitle className="text-base md:text-lg">Quick Start Guide</CardTitle>
+					<CardDescription className="text-xs md:text-sm">Follow these steps to see the complete flow</CardDescription>
 				</CardHeader>
 				<CardContent>
-					<div className="space-y-3 text-sm">
+					<div className="space-y-2 md:space-y-3 text-xs md:text-sm">
 						<div className="flex items-start gap-3">
 							<div className="flex-shrink-0 w-6 h-6 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-xs font-bold">1</div>
 							<div>
@@ -348,60 +348,63 @@ export default function TestConsole() {
 								)}
 							</Button>
 						</div>
-						<div className="rounded-md border">
-							<Table>
-								<TableHeader>
-									<TableRow>
-										<TableHead>Charge ID</TableHead>
-										<TableHead>Amount</TableHead>
-										<TableHead>Status</TableHead>
-										<TableHead>Refunded</TableHead>
-										<TableHead className="w-[100px]">Action</TableHead>
-									</TableRow>
-								</TableHeader>
-								<TableBody>
-									{charges.length === 0 ? (
+						<div className="rounded-md border overflow-x-auto -mx-4 md:mx-0">
+							<div className="min-w-full px-4 md:px-0">
+								<Table>
+									<TableHeader>
 										<TableRow>
-											<TableCell colSpan={5} className="text-center text-muted-foreground py-8">
-												No charges yet. Create one to get started.
-											</TableCell>
+											<TableHead className="text-xs md:text-sm">Charge ID</TableHead>
+											<TableHead className="text-xs md:text-sm">Amount</TableHead>
+											<TableHead className="text-xs md:text-sm hidden sm:table-cell">Status</TableHead>
+											<TableHead className="text-xs md:text-sm hidden sm:table-cell">Refunded</TableHead>
+											<TableHead className="text-xs md:text-sm w-[80px] md:w-[100px]">Action</TableHead>
 										</TableRow>
-									) : (
-										charges.map(c => (
-											<TableRow key={c.id}>
-												<TableCell className="font-mono text-xs">{c.id.slice(0, 5)}</TableCell>
-												<TableCell className="font-medium">${(c.amount_cents / 100).toFixed(2)}</TableCell>
-												<TableCell>
-													<Badge variant={c.status === 'succeeded' ? 'success' : 'secondary'}>{c.status}</Badge>
-												</TableCell>
-												<TableCell>
-													{c.refunded ? (
-														<Badge variant="success">
-															<CheckCircle2 className="h-3 w-3 mr-1" />
-															Yes
-														</Badge>
-													) : (
-														<Badge variant="outline">
-															<XCircle className="h-3 w-3 mr-1" />
-															No
-														</Badge>
-													)}
-												</TableCell>
-												<TableCell>
-													<Button
-														size="sm"
-														variant="outline"
-														onClick={() => refundCharge(c.id)}
-														disabled={c.refunded}
-													>
-														Refund
-													</Button>
+									</TableHeader>
+									<TableBody>
+										{charges.length === 0 ? (
+											<TableRow>
+												<TableCell colSpan={5} className="text-center text-muted-foreground py-8 text-xs md:text-sm">
+													No charges yet. Create one to get started.
 												</TableCell>
 											</TableRow>
-										))
-									)}
-								</TableBody>
-							</Table>
+										) : (
+											charges.map(c => (
+												<TableRow key={c.id}>
+													<TableCell className="font-mono text-xs">{c.id.slice(0, 5)}</TableCell>
+													<TableCell className="font-medium text-xs md:text-sm">${(c.amount_cents / 100).toFixed(2)}</TableCell>
+													<TableCell className="hidden sm:table-cell">
+														<Badge variant={c.status === 'succeeded' ? 'success' : 'secondary'} className="text-xs">{c.status}</Badge>
+													</TableCell>
+													<TableCell className="hidden sm:table-cell">
+														{c.refunded ? (
+															<Badge variant="success" className="text-xs">
+																<CheckCircle2 className="h-3 w-3 mr-1" />
+																Yes
+															</Badge>
+														) : (
+															<Badge variant="outline" className="text-xs">
+																<XCircle className="h-3 w-3 mr-1" />
+																No
+															</Badge>
+														)}
+													</TableCell>
+													<TableCell>
+														<Button
+															size="sm"
+															variant="outline"
+															onClick={() => refundCharge(c.id)}
+															disabled={c.refunded}
+															className="text-xs md:text-sm min-h-[32px] px-2 md:px-3"
+														>
+															Refund
+														</Button>
+													</TableCell>
+												</TableRow>
+											))
+										)}
+									</TableBody>
+								</Table>
+							</div>
 						</div>
 					</CardContent>
 				</Card>
@@ -464,21 +467,21 @@ export default function TestConsole() {
 													<Separator />
 													<div className="space-y-2">
 														<p className="text-xs font-medium text-muted-foreground">Status Progression</p>
-														<div className="flex items-center gap-2 text-xs">
+														<div className="flex items-center gap-1 md:gap-2 text-[10px] md:text-xs overflow-x-auto pb-2 -mx-4 px-4 md:mx-0 md:px-0">
 															{['initiated', 'approved', 'instant_sent', 'posted', 'recouped'].map((status, i) => {
 																const currentOrder = getStatusOrder(selectedRefund.status);
 																const statusOrder = getStatusOrder(status);
 																const isActive = statusOrder <= currentOrder;
 																const isCurrent = status === selectedRefund.status;
 																return (
-																	<div key={status} className="flex items-center">
-																		<div className={`flex items-center justify-center w-6 h-6 rounded-full text-xs font-medium ${isActive ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'} ${isCurrent ? 'ring-2 ring-primary ring-offset-1' : ''}`}>
+																	<div key={status} className="flex items-center flex-shrink-0">
+																		<div className={`flex items-center justify-center w-5 h-5 md:w-6 md:h-6 rounded-full text-[10px] md:text-xs font-medium ${isActive ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'} ${isCurrent ? 'ring-2 ring-primary ring-offset-1' : ''}`}>
 																			{i + 1}
 																		</div>
-																		<span className={`ml-2 ${isActive ? 'font-medium' : 'text-muted-foreground'}`}>
+																		<span className={`ml-1 md:ml-2 text-[10px] md:text-xs whitespace-nowrap ${isActive ? 'font-medium' : 'text-muted-foreground'}`}>
 																			{formatStatusDisplay(status)}
 																		</span>
-																		{i < 4 && <ArrowRight className="h-3 w-3 mx-1 text-muted-foreground" />}
+																		{i < 4 && <ArrowRight className="h-2 w-2 md:h-3 md:w-3 mx-0.5 md:mx-1 text-muted-foreground flex-shrink-0" />}
 																	</div>
 																);
 															})}
@@ -492,7 +495,7 @@ export default function TestConsole() {
 
 										<div className="space-y-2">
 											<p className="text-xs font-medium text-muted-foreground mb-2">Next Actions</p>
-											<div className="grid grid-cols-2 gap-2">
+											<div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
 												<Button
 													onClick={advanceRefund}
 													disabled={selectedRefund?.status !== 'approved'}
@@ -543,16 +546,16 @@ export default function TestConsole() {
 			</div>
 
 			<Card>
-				<CardHeader>
-					<CardTitle>Activity Log</CardTitle>
-					<CardDescription>Real-time log of all operations and status changes</CardDescription>
+				<CardHeader className="pb-3 md:pb-6">
+					<CardTitle className="text-base md:text-lg">Activity Log</CardTitle>
+					<CardDescription className="text-xs md:text-sm">Real-time log of all operations and status changes</CardDescription>
 				</CardHeader>
 				<CardContent>
-					<div className="rounded-md border bg-muted/50 p-4 max-h-[300px] overflow-y-auto">
+					<div className="rounded-md border bg-muted/50 p-3 md:p-4 max-h-[250px] md:max-h-[300px] overflow-y-auto">
 						{log.length === 0 ? (
-							<p className="text-sm text-muted-foreground text-center py-4">No activity yet. Create a charge to get started.</p>
+							<p className="text-xs md:text-sm text-muted-foreground text-center py-4">No activity yet. Create a charge to get started.</p>
 						) : (
-							<ul className="space-y-2 text-sm font-mono">
+							<ul className="space-y-1 md:space-y-2 text-xs md:text-sm font-mono">
 								{log.map((line, i) => (
 									<li key={i} className={line.startsWith('✓') ? 'text-green-600 dark:text-green-400' : line.startsWith('✗') ? 'text-red-600 dark:text-red-400' : line.startsWith('🚀') || line.startsWith('📨') || line.startsWith('💸') ? 'text-blue-600 dark:text-blue-400 font-semibold' : 'text-foreground'}>
 										{line}
