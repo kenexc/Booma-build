@@ -19,11 +19,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 						<a href="/" className="text-base md:text-lg font-semibold tracking-tight">
 							Booma
 						</a>
-						<nav className="flex items-center space-x-4 md:space-x-6">
-							<a href="/test" className="text-xs md:text-sm font-medium text-muted-foreground transition-colors hover:text-foreground">
-								Console
-							</a>
-						</nav>
 					</div>
 				</header>
 				<main className="container mx-auto px-4 md:px-6 py-4 md:py-8 max-w-7xl">{children}</main>
