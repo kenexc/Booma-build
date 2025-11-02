@@ -369,7 +369,7 @@ export default function TestConsole() {
 									) : (
 										charges.map(c => (
 											<TableRow key={c.id}>
-												<TableCell className="font-mono text-xs">{c.id.slice(0, 16)}...</TableCell>
+												<TableCell className="font-mono text-xs">{c.id.slice(0, 5)}</TableCell>
 												<TableCell className="font-medium">${(c.amount_cents / 100).toFixed(2)}</TableCell>
 												<TableCell>
 													<Badge variant={c.status === 'succeeded' ? 'success' : 'secondary'}>{c.status}</Badge>
